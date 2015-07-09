@@ -157,7 +157,24 @@ class GbifService {
                                             File localTmpDir = new File(grailsApplication.config.uploadFilePath + File.separator + "tmp" + File.separator + l.downloadId)
                                             FileUtils.forceMkdir(localTmpDir)
                                             String tmpFileName = localTmpDir.getAbsolutePath() + File.separator + l.downloadId
-                                            IOUtils.copy(new URL(grailsApplication.config.gbifApiUrl + OCCURRENCE_DOWNLOAD + "/" + l.downloadId + ".zip").openStream(), new FileOutputStream(tmpFileName))
+
+                                            // https://github.com/AtlasOfLivingAustralia/collectory-plugin/issues/53
+                                            InputStream instream = new URL(grailsApplication.config.gbifApiUrl + OCCURRENCE_DOWNLOAD +
+                                                                           "/" + l.downloadId + ".zip").openStream();
+                                            FileOutputStream outstream = new FileOutputStream(tmpFileName);
+                                            try {
+                                              IOUtils.copy(instream, outstream);
+                                            } catch (Exception e) {
+                                              l.phase = "Failed To download from GBIF."
+                                              loading = false;
+                                              return null;
+
+                                            } finally {
+                                              IOUtils.closeQuietly(instream);
+                                              IOUtils.closeQuietly(outstream);
+                                            }
+
+
                                             //4) Now create the data resource using the file downloaded
                                             l.phase = "Creating GBIF Data resource..."
                                             def dr = createOrUpdateGBIFResource(new File(tmpFileName))
